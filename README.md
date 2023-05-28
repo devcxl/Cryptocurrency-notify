@@ -2,7 +2,7 @@
 
 1. Clone code
 
-    `git clone https://github.com/devcxl/coin-price-check.git`
+    `git clone https://github.com/devcxl/coin-check.git`
 
 2. Installation dependencies 
 
