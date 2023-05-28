@@ -25,6 +25,5 @@ class EmailSender():
             with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
                 server.login(self.smtp_username, self.smtp_password)
                 server.sendmail(self.smtp_username, to, message.as_string())
-                os.environ['SEND_TIME'] = int(time.time())
         except smtplib.SMTPException as e:
             print("邮件发送失败:", str(e))

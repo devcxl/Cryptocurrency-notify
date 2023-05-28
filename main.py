@@ -12,40 +12,38 @@ class CoinCheck(threading.Thread):
 
     def __init__(self) -> None:
 
-        # 配置日志记录
-        logging.basicConfig(level=logging.INFO,
-                            format='%(asctime)s [%(levelname)s] %(message)s')
-        url = "https://api.coingecko.com/api/v3/simple/price"
+        self.url = "https://api.coingecko.com/api/v3/simple/price"
 
-        headers = {
+        self.headers = {
             "Accept": "application/json"
         }
 
         # 通知价格
-        notification_price = {
+        self.notification_price = {
             "ethereum": {
-                "max": "1865",
-                "min": "1775"
+                "max": 1000.00,
+                # "max": 1865.00,
+                "min": 1775.00
             },
             "bitcoin": {
-                "max": "27400.00",
-                "min": "26400.00"
+                "max": 27400.00,
+                "min": 26400.00
             },
             "matic-network": {
-                "max": "0.941255",
-                "min": "0.861837"
+                "max": 0.941255,
+                "min": 0.861837
             },
             "binancecoin": {
-                "max": "314.57",
-                "min": "302.15"
+                "max": 314.57,
+                "min": 302.15
             },
             "tron": {
-                "max": "0.072512",
-                "min": "0.079269"
+                "max": 0.072512,
+                "min": 0.079269
             }
         }
 
-        params = {
+        self.params = {
             'ids': 'ethereum,bitcoin,matic-network,binancecoin,tron',
             'vs_currencies': 'USD',
             'precision': 6,
@@ -64,9 +62,6 @@ class CoinCheck(threading.Thread):
                             required=True, help='邮件接收地址')
         parser.add_argument('--title', type=str, default='关注代币信息', help='邮件标题')
 
-        parser.add_argument('--price', type=str,
-                            required=True, help='提醒价格(美元)')
-
         parser.add_argument('--smtp-server', type=str,
                             required=True, help='邮件发送程序服务器')
         parser.add_argument('--smtp-port', type=int,
@@ -79,9 +74,30 @@ class CoinCheck(threading.Thread):
         # 解析命令行参数
         self.args = parser.parse_args()
 
+        customLevel = logging.INFO
+        if self.args.verbose:
+            customLevel = logging.DEBUG
+        # 配置日志记录
+        logging.basicConfig(level=customLevel,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
+
+        grf = '''
+   _____      _        _____ _               _    
+  / ____|    (_)      / ____| |             | |   
+ | |     ___  _ _ __ | |    | |__   ___  ___| | __
+ | |    / _ \| | '_ \| |    | '_ \ / _ \/ __| |/ /
+ | |___| (_) | | | | | |____| | | |  __/ (__|   < 
+  \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
+                                                  
+        '''
+
+        logging.info(grf)
+
+        logging.debug(self.args)
+
         threading.Thread.__init__(self)
 
-    def dateformat(timestamp):
+    def dateformat(self, timestamp):
         return datetime.datetime.fromtimestamp(timestamp).strftime('%Y/%m/%d %H:%M')
 
     def generateHtml(self, data):
@@ -155,11 +171,9 @@ class CoinCheck(threading.Thread):
                 for currency, info in data.items():
                     notifyPrice = self.notification_price[currency]
                     currentPrice = info['usd']
-                    if currentPrice > notifyPrice['max']:
+                    logging.debug(f'resp:{currency},{notifyPrice},{currentPrice}')
+                    if currentPrice > notifyPrice['max'] or currentPrice < notifyPrice['min']:
                         self.notify(data)
-                    if currentPrice < notifyPrice['min']:
-                        self.notify(data)
-
             else:
                 logging.error("Request failed with status code:",
                               response.status_code)
@@ -168,17 +182,19 @@ class CoinCheck(threading.Thread):
 
     def notify(self, data):
         context = self.generateHtml(data=data)
+        logging.debug("generate HTML succcessful!")
         sender = EmailSender(self.args.smtp_server, self.args.smtp_port,
                              self.args.smtp_username, self.args.smtp_password)
-        sender.sendHtml(context=context)
+        logging.debug("EmailSender ready!")
+        sender.sendHtml(to=self.args.to,
+                        title=self.args.title, context=context)
+        logging.info(f"notify: {self.args.to} successful!")
 
     def run(self):
         self.check_coin_price()
 
 
-
 if __name__ == "__main__":
     check = CoinCheck()
-    check.daemon=True
     check.start()
-
+    logging.info("daemon successful!")
