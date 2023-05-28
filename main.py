@@ -37,8 +37,8 @@ class CoinCheck(threading.Thread):
                 "min": 302.15
             },
             "tron": {
-                "max": 0.072512,
-                "min": 0.079269
+                "max": 0.079269,
+                "min": 0.072512
             }
         }
 
