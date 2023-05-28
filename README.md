@@ -1,3 +1,20 @@
+## Build
+
+1. Clone code
+
+    `git clone https://github.com/devcxl/coin-price-check.git`
+
+2. Installation dependencies 
+
+    `pip install -r requirements.txt`
+
+3. Build
+
+    `bash build.sh`
+
+
+## Usage
+
 ```
 usage: main.py [-h] --proxy PROXY --to TO [--title TITLE] --smtp-server SMTP_SERVER --smtp-port SMTP_PORT --smtp-username SMTP_USERNAME
                --smtp-password SMTP_PASSWORD [--verbose]
