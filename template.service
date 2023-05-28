@@ -1,0 +1,10 @@
+[Unit]
+Description=CoinCheck
+After=network.target
+
+[Service]
+ExecStart=/path/to/coin-check --you-params
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
