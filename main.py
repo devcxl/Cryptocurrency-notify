@@ -181,9 +181,10 @@ class CoinCheck(threading.Thread):
                 logging.error("Request failed with status code:",
                               response.status_code)
 
-            time.sleep(60)
+            time.sleep(600)
 
     def notify(self, data):
+        '''发送通知邮件'''
         context = self.generateHtml(data=data)
         logging.debug("generate HTML succcessful!")
         sender = EmailSender(self.args.smtp_server, self.args.smtp_port,
