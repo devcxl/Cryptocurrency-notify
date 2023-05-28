@@ -162,7 +162,7 @@ class CoinCheck(threading.Thread):
         '''检查关注的Coin的价格'''
 
         while True:
-
+            notification_flag = False
             response = requests.get(self.url, self.params, proxies={
                                     "http": self.args.proxy, "https": self.args.proxy}, headers=self.headers)
 
@@ -171,9 +171,12 @@ class CoinCheck(threading.Thread):
                 for currency, info in data.items():
                     notifyPrice = self.notification_price[currency]
                     currentPrice = info['usd']
-                    logging.debug(f'resp:{currency},{notifyPrice},{currentPrice}')
+                    logging.debug(
+                        f'resp:{currency},{notifyPrice},{currentPrice}')
                     if currentPrice > notifyPrice['max'] or currentPrice < notifyPrice['min']:
-                        self.notify(data)
+                        notification_flag = True
+                if notification_flag:
+                    self.notify(data)
             else:
                 logging.error("Request failed with status code:",
                               response.status_code)
