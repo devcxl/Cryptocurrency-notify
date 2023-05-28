@@ -21,8 +21,7 @@ class CoinCheck(threading.Thread):
         # 通知价格
         self.notification_price = {
             "ethereum": {
-                "max": 1000.00,
-                # "max": 1865.00,
+                "max": 1865.00,
                 "min": 1775.00
             },
             "bitcoin": {
@@ -137,7 +136,6 @@ class CoinCheck(threading.Thread):
             <th>当前价格(美元)</th>
             <th>24小时内涨跌(百分比)</th>
             <th>当前市值(美元)</th>
-            <th>24小时内交易活跃度(百分比)</th>
             <th>最后更新时间</th>
             </tr>
         """
@@ -147,9 +145,8 @@ class CoinCheck(threading.Thread):
             <tr>
             <td>{currency}</td>
             <td>{info['usd']}</td>
-            <td>{info['usd_24h_change']}</td>
+            <td>{round(info['usd_24h_change'],6)}%</td>
             <td>{info['usd_market_cap']}</td>
-            <td>{info['usd_24h_change']/info['usd_market_cap']*100}%</td>
             <td>{self.dateformat(info['last_updated_at'])}</td>
             </tr>
             """
