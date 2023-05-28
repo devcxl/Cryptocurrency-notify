@@ -53,11 +53,11 @@ class CoinCheck(threading.Thread):
         }
 
         # 创建解析器对象
-        parser = argparse.ArgumentParser(description='邮件发送代币信息')
+        parser = argparse.ArgumentParser(description='检查代币信息')
 
         # 添加命令行参数
         parser.add_argument('--proxy', type=str,
-                            required=True,  help='为程序设置代理')
+                            required=True,  help='为访问API设置代理')
         parser.add_argument('--to',  type=str,
                             required=True, help='邮件接收地址')
         parser.add_argument('--title', type=str, default='关注代币信息', help='邮件标题')
