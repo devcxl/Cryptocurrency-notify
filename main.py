@@ -6,6 +6,20 @@ import argparse
 import logging
 import threading
 import time
+import json
+from collections import defaultdict
+
+
+class Struct(object):
+    def __init__(self, data):
+        for name, value in data.items():
+            setattr(self, name, self._wrap(value))
+
+    def _wrap(self, value):
+        if isinstance(value, (tuple, list, set, frozenset)):
+            return type(value)([self._wrap(v) for v in value])
+        else:
+            return Struct(value) if isinstance(value, dict) else value
 
 
 class CoinCheck(threading.Thread):
@@ -16,30 +30,6 @@ class CoinCheck(threading.Thread):
 
         self.headers = {
             "Accept": "application/json"
-        }
-
-        # 通知价格
-        self.notification_price = {
-            "ethereum": {
-                "max": 1865.00,
-                "min": 1775.00
-            },
-            "bitcoin": {
-                "max": 27400.00,
-                "min": 26400.00
-            },
-            "matic-network": {
-                "max": 0.941255,
-                "min": 0.861837
-            },
-            "binancecoin": {
-                "max": 314.57,
-                "min": 302.15
-            },
-            "tron": {
-                "max": 0.079269,
-                "min": 0.072512
-            }
         }
 
         self.params = {
@@ -54,31 +44,22 @@ class CoinCheck(threading.Thread):
         # 创建解析器对象
         parser = argparse.ArgumentParser(description='检查代币信息')
 
-        # 添加命令行参数
-        parser.add_argument('--proxy', type=str,
-                            required=True,  help='为访问API设置代理')
-        parser.add_argument('--to',  type=str,
-                            required=True, help='邮件接收地址')
-        parser.add_argument('--title', type=str, default='关注代币信息', help='邮件标题')
+        parser.add_argument('--config', required=True, type=str, help="配置文件路径")
 
-        parser.add_argument('--smtp-server', type=str,
-                            required=True, help='邮件发送程序服务器')
-        parser.add_argument('--smtp-port', type=int,
-                            required=True, help='邮件发送程序服务器端口')
-        parser.add_argument('--smtp-username', type=str,
-                            required=True, help='邮件发送程序服务器的用户名')
-        parser.add_argument('--smtp-password', type=str,
-                            required=True, help='邮件发送程序服务器的密码')
         parser.add_argument('--verbose', action='store_true', help='是否启用详细模式')
         # 解析命令行参数
         self.args = parser.parse_args()
+
+        if self.args.config:
+            with open(self.args.config) as file:
+                self.config_dict = json.load(file)
+                self.config = Struct(self.config_dict)
 
         customLevel = logging.INFO
         if self.args.verbose:
             customLevel = logging.DEBUG
         # 配置日志记录
-        logging.basicConfig(level=customLevel,
-                            format='%(asctime)s [%(levelname)s] %(message)s')
+        logging.basicConfig(level=customLevel,format='%(asctime)s [%(levelname)s] %(message)s')
 
         grf = '''
    _____      _        _____ _               _    
@@ -95,6 +76,7 @@ class CoinCheck(threading.Thread):
         logging.debug(self.args)
 
         threading.Thread.__init__(self)
+        return
 
     def dateformat(self, timestamp):
         return datetime.datetime.fromtimestamp(timestamp).strftime('%Y/%m/%d %H:%M')
@@ -142,10 +124,10 @@ class CoinCheck(threading.Thread):
 
         for currency, info in data.items():
 
-            temp="green" if info['usd_24h_change'] > 0 else "red"
-            notifyPrice = self.notification_price[currency]
+            temp = "green" if info['usd_24h_change'] > 0 else "red"
+            notifyPrice = self.config_dict['price'][currency]
 
-            usd_color="black"
+            usd_color = "black"
 
             if info['usd'] > notifyPrice['max']:
                 usd_color = "green"
@@ -172,12 +154,12 @@ class CoinCheck(threading.Thread):
         while True:
             notification_flag = False
             response = requests.get(self.url, self.params, proxies={
-                                    "http": self.args.proxy, "https": self.args.proxy}, headers=self.headers)
+                                    "http": self.config.proxy, "https": self.config.proxy}, headers=self.headers)
 
             if response.status_code == 200:
                 data = response.json()
                 for currency, info in data.items():
-                    notifyPrice = self.notification_price[currency]
+                    notifyPrice = self.config_dict['price'][currency]
                     currentPrice = info['usd']
                     logging.debug(
                         f'resp:{currency},{notifyPrice},{currentPrice}')
@@ -195,12 +177,12 @@ class CoinCheck(threading.Thread):
         '''发送通知邮件'''
         context = self.generateHtml(data=data)
         logging.debug("generate HTML succcessful!")
-        sender = EmailSender(self.args.smtp_server, self.args.smtp_port,
-                             self.args.smtp_username, self.args.smtp_password)
+        sender = EmailSender(self.config.smtp_server, self.config.smtp_port,
+                             self.config.smtp_username, self.config.smtp_password)
         logging.debug("EmailSender ready!")
-        sender.sendHtml(to=self.args.to,
-                        title=self.args.title, context=context)
-        logging.info(f"notify: {self.args.to} successful!")
+        sender.sendHtml(to=self.config.to,
+                        title=self.config.title, context=context)
+        logging.info(f"notify: {self.config.to} successful!")
 
     def run(self):
         self.check_coin_price()
