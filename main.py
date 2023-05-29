@@ -141,11 +141,22 @@ class CoinCheck(threading.Thread):
         """
 
         for currency, info in data.items():
+
+            temp="green" if info['usd_24h_change'] > 0 else "red"
+            notifyPrice = self.notification_price[currency]
+
+            usd_color="black"
+
+            if info['usd'] > notifyPrice['max']:
+                usd_color = "green"
+            elif info['usd'] < notifyPrice['min']:
+                usd_color = "red"
+
             table_html += f"""
             <tr>
             <td>{currency}</td>
-            <td>{info['usd']}</td>
-            <td>{round(info['usd_24h_change'],6)}%</td>
+            <td style="color:{ usd_color }">{info['usd']}</td>
+            <td style="color:{ temp }" >{round(info['usd_24h_change'],6)}%</td>
             <td>{info['usd_market_cap']}</td>
             <td>{self.dateformat(info['last_updated_at'])}</td>
             </tr>
