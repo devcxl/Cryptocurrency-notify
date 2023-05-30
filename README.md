@@ -1,38 +1,88 @@
-## Build
+```
+   _____      _        _____ _               _    
+  / ____|    (_)      / ____| |             | |   
+ | |     ___  _ _ __ | |    | |__   ___  ___| | __
+ | |    / _ \| | '_ \| |    | '_ \ / _ \/ __| |/ /
+ | |___| (_) | | | | | |____| | | |  __/ (__|   < 
+  \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
+```
+
+
+CoinCheck is a notification tool designed to detect prices of blockchain tokens, with the aim of assisting individuals in achieving greater returns from the cryptocurrency market.
+
+## Usage
+
+```
+usage: coin-check [-h] --config CONFIG [--verbose]
+
+检查代币信息
+
+options:
+  -h, --help       Show this help message and exit
+  --config CONFIG  Config path
+  --verbose        Enable verbose mode
+```
+
+## Install
 
 1. Clone code
 
     `git clone https://github.com/devcxl/coin-check.git`
 
-2. Installation dependencies 
+2. create a new virtual environment
+
+    `python3 -m venv .env`
+
+3. activate
+
+    `source .env/bin/activate`
+
+4. Installation dependencies 
 
     `pip install -r requirements.txt`
 
-3. Build
+5. Build
 
     `bash build.sh`
 
+6. Install Binary 
 
-## Usage
+    `mv dist/coin-check /usr/bin/coin-check`
 
-```
-usage: main.py [-h] --proxy PROXY --to TO [--title TITLE] --smtp-server SMTP_SERVER --smtp-port SMTP_PORT --smtp-username SMTP_USERNAME
-               --smtp-password SMTP_PASSWORD [--verbose]
+7. Create systemd configuration
 
-检查代币信息
+    `sudo vim /etc/systemd/system/coincheck.service`
 
-options:
-  -h, --help            show this help message and exit
-  --proxy PROXY         为访问API设置代理
-  --to TO               邮件接收地址
-  --title TITLE         邮件标题
-  --smtp-server SMTP_SERVER
-                        邮件发送程序服务器
-  --smtp-port SMTP_PORT
-                        邮件发送程序服务器端口
-  --smtp-username SMTP_USERNAME
-                        邮件发送程序服务器的用户名
-  --smtp-password SMTP_PASSWORD
-                        邮件发送程序服务器的密码
-  --verbose             是否启用详细模式
-```
+8. Add context:
+
+    ```
+    [Unit]
+    Description=CoinCheck
+    After=network.target
+
+    [Service]
+    ExecStart=/usr/bin/coin-check --config /etc/coincheck/config.json
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+9. Configuration
+
+    [Example](/example_config.json)
+
+    `sudo vim /etc/coincheck/config.json`
+
+10. run in background
+
+    `sudo systecmtl daemon-reload`
+
+    `sudo systemctl enable --now coincheck.service`
+
+## Remove
+
+`sudo rm /etc/systemd/system/coincheck.service`
+
+`sudo rm -r /etc/coincheck/`
+
+`sudo rm  /usr/bin/coin-check`
