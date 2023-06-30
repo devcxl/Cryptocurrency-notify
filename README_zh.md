@@ -7,52 +7,52 @@
   \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
 ```
 
-[中文](/README_zh.md)
+[English](/README.md)
 
-CoinCheck is a notification tool designed to detect prices of blockchain tokens, with the aim of assisting individuals in achieving greater returns from the cryptocurrency market.
+CoinCheck是一个通知工具，旨在检测区块链代币的价格，旨在帮助个人从加密货币市场获得更大的回报。
 
-## Usage
+## 用法
 
 ```
 usage: coin-check [-h] --config CONFIG [--verbose]
 
 options:
-  -h, --help       Show this help message and exit
-  --config CONFIG  Config path
-  --verbose        Enable verbose mode
+  -h, --help       显示此帮助消息并退出
+  --config CONFIG  配置路径
+  --verbose        启用详细模式
 ```
 
-## Install
+## 安装
 
-1. Clone code
+1. 克隆代码
 
     `git clone https://github.com/devcxl/coin-check.git`
 
-2. create a new virtual environment
+2. 创建新的虚拟环境
 
     `python3 -m venv .env`
 
-3. activate
+3. 激活虚拟环境
 
     `source .env/bin/activate`
 
-4. Installation dependencies 
+4. 安装依赖关系
 
     `pip install -r requirements.txt`
 
-5. Build
+5. 构建
 
     `bash build.sh`
 
-6. Install Binary 
+6. 安装二进制文件
 
     `mv dist/coin-check /usr/bin/coin-check`
 
-7. Create systemd configuration
+7. 创建系统配置
 
     `sudo vim /etc/systemd/system/coincheck.service`
 
-8. Add context:
+8. 添加以下内容:
 
     ```
     [Unit]
@@ -66,19 +66,19 @@ options:
     [Install]
     WantedBy=multi-user.target
     ```
-9. Configuration
+9. 配置
 
     [Example](/example_config.json)
 
     `sudo vim /etc/coincheck/config.json`
 
-10. run in background
+10. 在后台运行
 
     `sudo systecmtl daemon-reload`
 
     `sudo systemctl enable --now coincheck.service`
 
-## Remove
+## 删除
 
 `sudo rm /etc/systemd/system/coincheck.service`
 

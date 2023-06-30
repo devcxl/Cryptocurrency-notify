@@ -120,6 +120,13 @@ class CoinCheck(threading.Thread):
             <th>当前市值(美元)</th>
             <th>最后更新时间</th>
             </tr>
+            <tr>
+            <th>Token</th>
+            <th>Price(USD)</th>
+            <th>24H (%)</th>
+            <th>Mkt Cap(USD)</th>
+            <th>Last Update</th>
+            </tr>
         """
 
         for currency, info in data.items():

@@ -26,4 +26,4 @@ class EmailSender():
                 server.login(self.smtp_username, self.smtp_password)
                 server.sendmail(self.smtp_username, to, message.as_string())
         except smtplib.SMTPException as e:
-            print("邮件发送失败:", str(e))
+            print("email send failed:", str(e))
