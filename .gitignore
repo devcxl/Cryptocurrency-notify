@@ -3,5 +3,5 @@ __pycache__/
 dist/
 build/
 *.spec
-prod.json
+prod.yaml
 index.html

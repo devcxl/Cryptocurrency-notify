@@ -1,30 +1,84 @@
-
-import requests
-import datetime
-from emailSender import EmailSender
 import argparse
+import datetime
+import json
 import logging
+import smtplib
 import threading
 import time
-import json
-from collections import defaultdict
+from decimal import Decimal
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Dict
+
+import matplotlib.pyplot as plt
+import requests
+import yaml
+from pydantic import BaseModel, Field
+
+log = logging.getLogger('coin-check')
 
 
-class Struct(object):
-    def __init__(self, data):
-        for name, value in data.items():
-            setattr(self, name, self._wrap(value))
+class EmailSetting(BaseModel):
+    smtp_server: str = Field(description="SMTP发送服务器")
+    # 一般为587或者465
+    smtp_port: int = Field(description="SMTP发送服务器端口号")
+    # 发件人的邮箱和密码
+    sender_email: str = Field(description="SMTP发件人")
+    sender_password: str = Field(description="SMTP密码")
 
-    def _wrap(self, value):
-        if isinstance(value, (tuple, list, set, frozenset)):
-            return type(value)([self._wrap(v) for v in value])
-        else:
-            return Struct(value) if isinstance(value, dict) else value
+
+class Coin(BaseModel):
+    max: Decimal
+    min: Decimal
+
+
+class Setting(BaseModel):
+    """配置类"""
+    email: EmailSetting = Field(description="Email setting")
+    coinlist: Dict[str, Coin] = Field(description="关注的代币列表")
+    sendto: str = Field(description='邮件收件人')
+    proxy: str = Field(description='请求代理')
+
+
+def load_config(config_file: str, format: str):
+    """加载配置文件"""
+    log.info(f'加载配置文件:{config_file}')
+    if config_file:
+        with open(config_file) as file:
+            if format == 'json':
+                return Setting.model_validate_json(file.read(), strict=True)
+            elif format == 'yaml':
+                config_data = yaml.safe_load(file.read())
+                json_data = json.dumps(config_data)
+                return Setting.model_validate_json(json_data, strict=True)
 
 
 class CoinCheck(threading.Thread):
 
     def __init__(self) -> None:
+
+        parser = argparse.ArgumentParser(description='CoinCheck')
+        parser.add_argument('--config', '-f', required=True,
+                            type=str, help="配置文件路径")
+        parser.add_argument('--format', '-t', default='yaml',
+                            type=str, help="配置文件格式化类型。可选：yaml（默认），json")
+        parser.add_argument('--verbose', action='store_true', help='是否启用详细模式')
+
+        args = parser.parse_args()
+
+        self.conf = load_config(args.config, args.format)
+
+        temp = open('template.html', 'r')
+        self.template = temp.read()
+        temp.close()
+
+        self.email_sender = smtplib.SMTP_SSL(
+            self.conf.email.smtp_server, self.conf.email.smtp_port)
+
+        self.email_sender.login(
+            self.conf.email.sender_email, self.conf.email.sender_password)
+        log.debug("EmailSender ready!")
 
         self.url = "https://api.coingecko.com/api/v3/simple/price"
 
@@ -32,48 +86,24 @@ class CoinCheck(threading.Thread):
             "Accept": "application/json"
         }
 
+        self.coins = ",".join(self.conf.coinlist.keys())
+        log.info(f'listen coins: {self.coins}')
+
         self.params = {
-            'ids': 'ethereum,bitcoin,matic-network,binancecoin,tron',
+            'ids': f'{self.coins}',
             'vs_currencies': 'USD',
-            'precision': 6,
+            'precision': 8,
             'include_last_updated_at': 'true',
             'include_24hr_change': 'true',
             'include_market_cap': 'true'
         }
 
-        # 创建解析器对象
-        parser = argparse.ArgumentParser(description='检查代币信息')
-
-        parser.add_argument('--config', required=True, type=str, help="配置文件路径")
-
-        parser.add_argument('--verbose', action='store_true', help='是否启用详细模式')
-        # 解析命令行参数
-        self.args = parser.parse_args()
-
-        if self.args.config:
-            with open(self.args.config) as file:
-                self.config_dict = json.load(file)
-                self.config = Struct(self.config_dict)
-
         customLevel = logging.INFO
-        if self.args.verbose:
+        if args.verbose:
             customLevel = logging.DEBUG
         # 配置日志记录
-        logging.basicConfig(level=customLevel,format='%(asctime)s [%(levelname)s] %(message)s')
-
-        grf = '''
-   _____      _        _____ _               _    
-  / ____|    (_)      / ____| |             | |   
- | |     ___  _ _ __ | |    | |__   ___  ___| | __
- | |    / _ \| | '_ \| |    | '_ \ / _ \/ __| |/ /
- | |___| (_) | | | | | |____| | | |  __/ (__|   < 
-  \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
-                                                  
-        '''
-
-        logging.info(grf)
-
-        logging.debug(self.args)
+        logging.basicConfig(level=customLevel,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
 
         threading.Thread.__init__(self)
         return
@@ -81,115 +111,125 @@ class CoinCheck(threading.Thread):
     def dateformat(self, timestamp):
         return datetime.datetime.fromtimestamp(timestamp).strftime('%Y/%m/%d %H:%M')
 
+    def get_chart(self, coin, days=14):
+        headers = {
+            "Accept": "application/json"
+        }
+        params = {
+            'vs_currency': 'USD',
+            'precision': 8,
+            'days': days
+        }
+        url = f'https://api.coingecko.com/api/v3/coins/{coin}/market_chart'
+        response = requests.get(url,
+                                params,
+                                proxies={"http": self.conf.proxy,
+                                         "https": self.conf.proxy},
+                                headers=headers)
+        if response.status_code == 200:
+            json_data = response.json()
+            # 创建折线图
+            plt.figure(figsize=(10, 6))
+            prices = json_data["prices"]
+            dates = [datetime.datetime.fromtimestamp(
+                ts / 1000.0) for ts, _ in prices]
+            # 绘制价格折线图
+            plt.plot(dates, [price for _, price in prices],
+                     label=coin, c='r')
+            # 设置图表标题和标签
+            plt.title(f'Cryptocurrency {coin} Price')
+            plt.xlabel('Date')
+            plt.ylabel('USD')
+            # plt.legend()
+            # 自动调整日期标签的格式
+            plt.gcf().autofmt_xdate()
+            file = f'cryptocurrency_{coin}.png'
+            plt.savefig(file)
+            return file
+
     def generateHtml(self, data):
         '''生成HTML'''
-        table_html = """
-        <style>
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-family: Arial, sans-serif;
-            }
-
-            th {
-                background-color: #f2f2f2;
-                font-weight: bold;
-                padding: 8px;
-                text-align: left;
-            }
-
-            td {
-                padding: 8px;
-                border-bottom: 1px solid #ddd;
-            }
-
-            tr:nth-child(even) {
-                background-color: #f9f9f9;
-            }
-
-            tr:hover {
-                background-color: #f5f5f5;
-            }
-        </style>
-
-        <table>
-            <tr>
-            <th>币种</th>
-            <th>当前价格(美元)</th>
-            <th>24小时内涨跌(百分比)</th>
-            <th>当前市值(美元)</th>
-            <th>最后更新时间</th>
-            </tr>
-            <tr>
-            <th>Token</th>
-            <th>Price(USD)</th>
-            <th>24H (%)</th>
-            <th>Mkt Cap(USD)</th>
-            <th>Last Update</th>
-            </tr>
-        """
-
+        table_html = ""
         for currency, info in data.items():
 
             temp = "green" if info['usd_24h_change'] > 0 else "red"
-            notifyPrice = self.config_dict['price'][currency]
+            notifyPrice = self.conf.coinlist.get(currency)
 
             usd_color = "black"
 
-            if info['usd'] > notifyPrice['max']:
+            if info['usd'] > notifyPrice.max:
                 usd_color = "green"
-            elif info['usd'] < notifyPrice['min']:
+            elif info['usd'] < notifyPrice.min:
                 usd_color = "red"
 
             table_html += f"""
             <tr>
-            <td>{currency}</td>
-            <td style="color:{ usd_color }">{info['usd']}</td>
-            <td style="color:{ temp }" >{round(info['usd_24h_change'],6)}%</td>
+            <td><img src="cid:image_cid_{currency}"></td>
+            <td><a>{currency}</a></td>
+            <td style="color:{usd_color}">{info['usd']}</td>
+            <td style="color:{temp}" >{round(info['usd_24h_change'], 6)}%</td>
             <td>{info['usd_market_cap']}</td>
             <td>{self.dateformat(info['last_updated_at'])}</td>
             </tr>
             """
-
-        table_html += """</table>"""
-
         return table_html
 
     def check_coin_price(self):
         '''检查关注的Coin的价格'''
-
         while True:
             notification_flag = False
             response = requests.get(self.url, self.params, proxies={
-                                    "http": self.config.proxy, "https": self.config.proxy}, headers=self.headers)
+                "http": self.conf.proxy, "https": self.conf.proxy},
+                                    headers=self.headers)
 
             if response.status_code == 200:
                 data = response.json()
                 for currency, info in data.items():
-                    notifyPrice = self.config_dict['price'][currency]
-                    currentPrice = info['usd']
-                    logging.debug(
-                        f'resp:{currency},{notifyPrice},{currentPrice}')
-                    if currentPrice > notifyPrice['max'] or currentPrice < notifyPrice['min']:
-                        notification_flag = True
+                    notifyPrice = self.conf.coinlist.get(currency)
+                    if notifyPrice:
+                        currentPrice = info['usd']
+                        log.debug(
+                            f'resp:{currency},{notifyPrice},{currentPrice}')
+                        if currentPrice > notifyPrice.max or currentPrice < notifyPrice.min:
+                            notification_flag = True
                 if notification_flag:
                     self.notify(data)
             else:
-                logging.error("Request failed with status code:",
-                              response.status_code)
+                log.error("Request failed with status code:",
+                          response.status_code)
 
             time.sleep(600)
 
     def notify(self, data):
         '''发送通知邮件'''
-        context = self.generateHtml(data=data)
-        logging.debug("generate HTML succcessful!")
-        sender = EmailSender(self.config.smtp_server, self.config.smtp_port,
-                             self.config.smtp_username, self.config.smtp_password)
-        logging.debug("EmailSender ready!")
-        sender.sendHtml(to=self.config.to,
-                        title=self.config.title, context=context)
-        logging.info(f"notify: {self.config.to} successful!")
+        context = self.template.replace(
+            '<!-- context -->', self.generateHtml(data=data))
+        message = MIMEMultipart()
+        message["From"] = self.conf.email.sender_email
+        message["To"] = self.conf.sendto
+        message["Subject"] = "Notify Cryptocurrency Price!!!"
+
+        html_part = MIMEText(context, "html")
+        # 将HTML内容添加到邮件
+        message.attach(html_part)
+
+        for currency, info in data.items():
+            self.get_chart(coin=currency)
+            with open(f'cryptocurrency_{currency}.png', 'rb') as image_file:
+                image_data = image_file.read()
+                msg_image = MIMEImage(image_data)
+
+                msg_image.add_header(
+                    'content-disposition', 'attachment', filename=f'cryptocurrency_{currency}.png')
+                msg_image.add_header('Content-ID', f'image_cid_{currency}')
+                message.attach(msg_image)
+
+        try:
+            self.email_sender.sendmail(
+                self.conf.email.sender_email, self.conf.sendto, message.as_string())
+            log.info(f"notify: {self.conf.sendto} successful!")
+        except smtplib.SMTPException as e:
+            log.error("email send failed:", str(e))
 
     def run(self):
         self.check_coin_price()
@@ -198,4 +238,4 @@ class CoinCheck(threading.Thread):
 if __name__ == "__main__":
     check = CoinCheck()
     check.start()
-    logging.info("daemon successful!")
+    log.info("daemon successful!")

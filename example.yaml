@@ -1,0 +1,25 @@
+email:
+  smtp_server: smtp.qq.com
+  smtp_port: 465
+  sender_email: example@qq.com
+  sender_password: example_password
+
+coinlist:
+  ethereum:
+    max: 2865.00
+    min: 2505.00
+  bitcoin:
+    max: 47400.00
+    min: 42400.00
+  matic-network:
+    max: 0.951255
+    min: 0.89
+  binancecoin:
+    max: 314.57
+    min: 292.15
+  tron:
+    max: 0.15269
+    min: 0.072512
+
+sendto: example@qq.com
+proxy: http://127.0.0.1:8889
