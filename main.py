@@ -10,7 +10,8 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Dict
-
+import sys
+import os
 import matplotlib.pyplot as plt
 import requests
 import yaml
@@ -69,7 +70,13 @@ class CoinCheck(threading.Thread):
 
         self.conf = load_config(args.config, args.format)
 
-        temp = open('template.html', 'r')
+        # 获取可执行文件所在目录
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+
+        # 构建配置文件的绝对路径
+        config_file_path = os.path.join(base_path, 'template.html')
+
+        temp = open(config_file_path, 'r')
         self.template = temp.read()
         temp.close()
 
