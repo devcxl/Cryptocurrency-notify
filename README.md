@@ -1,20 +1,19 @@
-```
-   _____      _        _____ _               _    
-  / ____|    (_)      / ____| |             | |   
- | |     ___  _ _ __ | |    | |__   ___  ___| | __
- | |    / _ \| | '_ \| |    | '_ \ / _ \/ __| |/ /
- | |___| (_) | | | | | |____| | | |  __/ (__|   < 
-  \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
+```                                                                            
+ _____             _                                                   _   _ ___       
+|     |___ _ _ ___| |_ ___ ___ _ _ ___ ___ ___ ___ ___ _ _ ___ ___ ___| |_|_|  _|_ _   
+|   --|  _| | | . |  _| . |  _| | |  _|  _| -_|   |  _| | |___|   | . |  _| |  _| | |  
+|_____|_| |_  |  _|_| |___|___|___|_| |_| |___|_|_|___|_  |   |_|_|___|_| |_|_| |_  |  
+          |___|_|                                     |___|                     |___|  
 ```
 
 [中文](/README_zh.md)
 
-CoinCheck is a notification tool designed to detect prices of blockchain tokens, with the aim of assisting individuals in achieving greater returns from the cryptocurrency market.
+Cryptocurrency-notify is a notification tool designed to detect prices of blockchain tokens, with the aim of assisting individuals in achieving greater returns from the cryptocurrency market.
 
 ## Usage
 
 ```
-usage: coin-check [-h] --config CONFIG [--verbose]
+usage: cryptocurrency-notify [-h] --config CONFIG [--verbose]
 
 options:
   -h, --help       Show this help message and exit
@@ -26,7 +25,7 @@ options:
 
 1. Clone code
 
-    `git clone https://github.com/devcxl/coin-check.git`
+    `git clone https://github.com/devcxl/cryptocurrency-notify.git`
 
 2. create a new virtual environment
 
@@ -46,21 +45,21 @@ options:
 
 6. Install Binary 
 
-    `mv dist/coin-check /usr/bin/coin-check`
+    `mv dist/main /usr/bin/cryptocurrency-notify`
 
 7. Create systemd configuration
 
-    `sudo vim /etc/systemd/system/coincheck.service`
+    `sudo vim /etc/systemd/system/cryptocurrency-notify.service`
 
 8. Add context:
 
     ```
     [Unit]
-    Description=CoinCheck
+    Description=Cryptocurrency-notify
     After=network.target
 
     [Service]
-    ExecStart=/usr/bin/coin-check --config /etc/coincheck/config.json
+    ExecStart=/usr/bin/cryptocurrency-notify --config /etc/cryptocurrency-notify/config.json
     Restart=always
 
     [Install]
@@ -70,18 +69,18 @@ options:
 
     [Example](/example_config.json)
 
-    `sudo vim /etc/coincheck/config.json`
+    `sudo vim /etc/cryptocurrency-notify/config.json`
 
 10. run in background
 
     `sudo systecmtl daemon-reload`
 
-    `sudo systemctl enable --now coincheck.service`
+    `sudo systemctl enable --now cryptocurrency-notify.service`
 
 ## Remove
 
-`sudo rm /etc/systemd/system/coincheck.service`
+`sudo rm /etc/systemd/system/cryptocurrency-notify.service`
 
-`sudo rm -r /etc/coincheck/`
+`sudo rm -r /etc/cryptocurrency-notify/`
 
-`sudo rm  /usr/bin/coin-check`
+`sudo rm  /usr/bin/cryptocurrency-notify`

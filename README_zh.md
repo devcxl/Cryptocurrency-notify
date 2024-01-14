@@ -1,20 +1,19 @@
 ```
-   _____      _        _____ _               _    
-  / ____|    (_)      / ____| |             | |   
- | |     ___  _ _ __ | |    | |__   ___  ___| | __
- | |    / _ \| | '_ \| |    | '_ \ / _ \/ __| |/ /
- | |___| (_) | | | | | |____| | | |  __/ (__|   < 
-  \_____\___/|_|_| |_|\_____|_| |_|\___|\___|_|\_\
+ _____             _                                                   _   _ ___       
+|     |___ _ _ ___| |_ ___ ___ _ _ ___ ___ ___ ___ ___ _ _ ___ ___ ___| |_|_|  _|_ _   
+|   --|  _| | | . |  _| . |  _| | |  _|  _| -_|   |  _| | |___|   | . |  _| |  _| | |  
+|_____|_| |_  |  _|_| |___|___|___|_| |_| |___|_|_|___|_  |   |_|_|___|_| |_|_| |_  |  
+          |___|_|     
 ```
 
 [English](/README.md)
 
-CoinCheck是一个通知工具，旨在检测区块链代币的价格，旨在帮助个人从加密货币市场获得更大的回报。
+Cryptocurrency-notify 是一个通知工具，旨在检测区块链代币的价格，旨在帮助个人从加密货币市场获得更大的回报。
 
 ## 用法
 
 ```
-usage: coin-check [-h] --config CONFIG [--verbose]
+usage: cryptocurrency-notify [-h] --config CONFIG [--verbose]
 
 options:
   -h, --help       显示此帮助消息并退出
@@ -26,7 +25,7 @@ options:
 
 1. 克隆代码
 
-    `git clone https://github.com/devcxl/coin-check.git`
+    `git clone https://github.com/devcxl/cryptocurrency-notify.git`
 
 2. 创建新的虚拟环境
 
@@ -46,21 +45,21 @@ options:
 
 6. 安装二进制文件
 
-    `mv dist/coin-check /usr/bin/coin-check`
+    `mv dist/main /usr/bin/cryptocurrency-notify`
 
 7. 创建系统配置
 
-    `sudo vim /etc/systemd/system/coincheck.service`
+    `sudo vim /etc/systemd/system/cryptocurrency-notify.service`
 
 8. 添加以下内容:
 
     ```
     [Unit]
-    Description=CoinCheck
+    Description=Cryptocurrency-notify
     After=network.target
 
     [Service]
-    ExecStart=/usr/bin/coin-check --config /etc/coincheck/config.json
+    ExecStart=/usr/bin/cryptocurrency-notify --config /etc/cryptocurrency-notify/config.json
     Restart=always
 
     [Install]
@@ -70,18 +69,18 @@ options:
 
     [Example](/example_config.json)
 
-    `sudo vim /etc/coincheck/config.json`
+    `sudo vim /etc/cryptocurrency-notify/config.json`
 
 10. 在后台运行
 
     `sudo systecmtl daemon-reload`
 
-    `sudo systemctl enable --now coincheck.service`
+    `sudo systemctl enable --now cryptocurrency-notify.service`
 
 ## 删除
 
-`sudo rm /etc/systemd/system/coincheck.service`
+`sudo rm /etc/systemd/system/cryptocurrency-notify.service`
 
-`sudo rm -r /etc/coincheck/`
+`sudo rm -r /etc/cryptocurrency-notify/`
 
-`sudo rm  /usr/bin/coin-check`
+`sudo rm  /usr/bin/cryptocurrency-notify`
