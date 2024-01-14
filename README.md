@@ -84,3 +84,25 @@ options:
 `sudo rm -r /etc/cryptocurrency-notify/`
 
 `sudo rm  /usr/bin/cryptocurrency-notify`
+
+## Docker
+
+1. Clone code
+
+   `git clone https://github.com/devcxl/cryptocurrency-notify.git`
+
+2. build
+
+   `docker build -t cryptocurrency-notify .`
+
+3. run 
+
+   `docker run -it --name cryptocurrency-notify -v ${PWD}/config/config.yaml:/etc/coin/config.yaml cryptocurrency-notify`
+
+4. check 
+
+   `docker log cryptocurrency-notify`
+
+   ```
+   2024-01-14 01:43:54,720 [INFO] daemon successful!
+   ```
