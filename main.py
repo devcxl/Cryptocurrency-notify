@@ -2,7 +2,9 @@ import argparse
 import datetime
 import json
 import logging
+import os
 import smtplib
+import sys
 import threading
 import time
 from decimal import Decimal
@@ -10,8 +12,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Dict
-import sys
-import os
+
 import matplotlib.pyplot as plt
 import requests
 import yaml
@@ -58,6 +59,7 @@ def load_config(config_file: str, format: str):
 class CoinCheck(threading.Thread):
 
     def __init__(self) -> None:
+        threading.Thread.__init__(self)
 
         parser = argparse.ArgumentParser(description='CoinCheck')
         parser.add_argument('--config', '-f', required=True,
@@ -112,13 +114,10 @@ class CoinCheck(threading.Thread):
         logging.basicConfig(level=customLevel,
                             format='%(asctime)s [%(levelname)s] %(message)s')
 
-        threading.Thread.__init__(self)
-        return
-
     def dateformat(self, timestamp):
         return datetime.datetime.fromtimestamp(timestamp).strftime('%Y/%m/%d %H:%M')
 
-    def get_chart(self, coin, days=14):
+    def get_chart(self, coin, days=14) -> str:
         headers = {
             "Accept": "application/json"
         }
@@ -136,22 +135,43 @@ class CoinCheck(threading.Thread):
         if response.status_code == 200:
             json_data = response.json()
             # 创建折线图
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(12, 12), dpi=200)
             prices = json_data["prices"]
+            market_caps = json_data["market_caps"]
+            total_volumes = json_data["total_volumes"]
             dates = [datetime.datetime.fromtimestamp(
                 ts / 1000.0) for ts, _ in prices]
-            # 绘制价格折线图
+
+            # 价格曲线
+            plt.subplot(3, 1, 1)
             plt.plot(dates, [price for _, price in prices],
                      label=coin, c='r')
-            # 设置图表标题和标签
-            plt.title(f'Cryptocurrency {coin} Price')
             plt.xlabel('Date')
             plt.ylabel('USD')
-            # plt.legend()
-            # 自动调整日期标签的格式
+            plt.title('Price')
+
+            # 总交易量曲线
+            plt.subplot(3, 1, 2)
+            plt.plot(dates, [total_volume for _, total_volume in total_volumes],
+                     label=coin, c='g')
+            plt.xlabel('Date')
+            plt.ylabel('USD')
+            plt.title('Total Volume')
+
+            # 市值曲线
+            plt.subplot(3, 1, 3)
+            plt.plot(dates, [market_cap for _, market_cap in market_caps],
+                     label=coin, c='b')
+            plt.xlabel('Date')
+            plt.ylabel('USD')
+            plt.title('Market Cap')
+
+            plt.suptitle(f'Cryptocurrency {coin}')
+
             plt.gcf().autofmt_xdate()
-            file = f'cryptocurrency_{coin}.png'
+            file = f'/tmp/cryptocurrency_{coin}.png'
             plt.savefig(file)
+            time.sleep(2)
             return file
 
     def generateHtml(self, data):
@@ -202,8 +222,7 @@ class CoinCheck(threading.Thread):
                 if notification_flag:
                     self.notify(data)
             else:
-                log.error("Request failed with status code:",
-                          response.status_code)
+                log.error("Request CoinGeko api failed")
 
             time.sleep(600)
 
@@ -221,8 +240,7 @@ class CoinCheck(threading.Thread):
         message.attach(html_part)
 
         for currency, info in data.items():
-            self.get_chart(coin=currency)
-            with open(f'cryptocurrency_{currency}.png', 'rb') as image_file:
+            with open(self.get_chart(coin=currency), 'rb') as image_file:
                 image_data = image_file.read()
                 msg_image = MIMEImage(image_data)
 
@@ -230,7 +248,6 @@ class CoinCheck(threading.Thread):
                     'content-disposition', 'attachment', filename=f'cryptocurrency_{currency}.png')
                 msg_image.add_header('Content-ID', f'image_cid_{currency}')
                 message.attach(msg_image)
-
         try:
             self.email_sender.sendmail(
                 self.conf.email.sender_email, self.conf.sendto, message.as_string())
