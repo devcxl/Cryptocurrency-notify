@@ -82,12 +82,7 @@ class CoinCheck(threading.Thread):
         self.template = temp.read()
         temp.close()
 
-        self.email_sender = smtplib.SMTP_SSL(
-            self.conf.email.smtp_server, self.conf.email.smtp_port)
 
-        self.email_sender.login(
-            self.conf.email.sender_email, self.conf.email.sender_password)
-        log.debug("EmailSender ready!")
 
         self.url = "https://api.coingecko.com/api/v3/simple/price"
 
@@ -249,7 +244,11 @@ class CoinCheck(threading.Thread):
                 msg_image.add_header('Content-ID', f'image_cid_{currency}')
                 message.attach(msg_image)
         try:
-            self.email_sender.sendmail(
+            email_sender = smtplib.SMTP_SSL(
+                self.conf.email.smtp_server, self.conf.email.smtp_port)
+            email_sender.login(
+                self.conf.email.sender_email, self.conf.email.sender_password)
+            email_sender.sendmail(
                 self.conf.email.sender_email, self.conf.sendto, message.as_string())
             log.info(f"notify: {self.conf.sendto} successful!")
         except smtplib.SMTPException as e:
