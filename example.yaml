@@ -4,6 +4,14 @@ email:
   sender_email: example@qq.com
   sender_password: example_password
 
+
+minio_s3:
+  endpoint: test.example.com
+  bucket: image
+  access_key: xxxxxxxxxxxxx
+  secret_key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
 coinlist:
   ethereum:
     max: 2865.00

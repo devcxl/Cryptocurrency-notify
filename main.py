@@ -8,7 +8,6 @@ import sys
 import threading
 import time
 from decimal import Decimal
-from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Dict
@@ -16,6 +15,7 @@ from typing import Dict
 import matplotlib.pyplot as plt
 import requests
 import yaml
+from minio import Minio
 from pydantic import BaseModel, Field
 
 log = logging.getLogger('coin-check')
@@ -30,6 +30,13 @@ class EmailSetting(BaseModel):
     sender_password: str = Field(description="SMTP密码")
 
 
+class MinioS3Setting(BaseModel):
+    endpoint: str = Field(description="上传端点")
+    bucket: str = Field(description="存储桶名称")
+    access_key: str = Field(description='访问密钥')
+    secret_key: str = Field(description='密钥')
+
+
 class Coin(BaseModel):
     max: Decimal
     min: Decimal
@@ -38,6 +45,7 @@ class Coin(BaseModel):
 class Setting(BaseModel):
     """配置类"""
     email: EmailSetting = Field(description="Email setting")
+    minio_s3: MinioS3Setting = Field(description="File Setting")
     coinlist: Dict[str, Coin] = Field(description="关注的代币列表")
     sendto: str = Field(description='邮件收件人')
     proxy: str = Field(description='请求代理')
@@ -82,7 +90,18 @@ class CoinCheck(threading.Thread):
         self.template = temp.read()
         temp.close()
 
+        self.client = Minio(
+            endpoint=self.conf.minio_s3.endpoint,
+            access_key=self.conf.minio_s3.access_key,
+            secret_key=self.conf.minio_s3.secret_key,
+        )
 
+        found = self.client.bucket_exists(self.conf.minio_s3.bucket)
+        if not found:
+            self.client.make_bucket(self.conf.minio_s3.bucket)
+            log.info("Created bucket", self.conf.minio_s3.bucket)
+        else:
+            log.info("Bucket", self.conf.minio_s3.bucket, "already exists")
 
         self.url = "https://api.coingecko.com/api/v3/simple/price"
 
@@ -130,7 +149,7 @@ class CoinCheck(threading.Thread):
         if response.status_code == 200:
             json_data = response.json()
             # 创建折线图
-            plt.figure(figsize=(12, 12), dpi=200)
+            plt.figure(figsize=(12, 12))
             prices = json_data["prices"]
             market_caps = json_data["market_caps"]
             total_volumes = json_data["total_volumes"]
@@ -164,10 +183,12 @@ class CoinCheck(threading.Thread):
             plt.suptitle(f'Cryptocurrency {coin}')
 
             plt.gcf().autofmt_xdate()
-            file = f'/tmp/cryptocurrency_{coin}.png'
-            plt.savefig(file)
-            time.sleep(2)
-            return file
+            filename = f'cryptocurrency_{coin}_{int(time.time())}.png'
+            plt.savefig(f'/tmp/{filename}')
+            self.client.fput_object(
+                self.conf.minio_s3.bucket, f'/public/{filename}', f'/tmp/{filename}',
+            )
+            return f'https://{self.conf.minio_s3.endpoint}/{self.conf.minio_s3.bucket}/public/{filename}'
 
     def generateHtml(self, data):
         '''生成HTML'''
@@ -186,7 +207,7 @@ class CoinCheck(threading.Thread):
 
             table_html += f"""
             <tr>
-            <td><img src="cid:image_cid_{currency}"></td>
+            <td><img src="{self.get_chart(coin=currency)}"></td>
             <td><a>{currency}</a></td>
             <td style="color:{usd_color}">{info['usd']}</td>
             <td style="color:{temp}" >{round(info['usd_24h_change'], 6)}%</td>
@@ -228,21 +249,12 @@ class CoinCheck(threading.Thread):
         message = MIMEMultipart()
         message["From"] = self.conf.email.sender_email
         message["To"] = self.conf.sendto
-        message["Subject"] = "Notify Cryptocurrency Price!!!"
+        message["Subject"] = "Notify Cryptocurrency Status!!!"
 
         html_part = MIMEText(context, "html")
         # 将HTML内容添加到邮件
         message.attach(html_part)
 
-        for currency, info in data.items():
-            with open(self.get_chart(coin=currency), 'rb') as image_file:
-                image_data = image_file.read()
-                msg_image = MIMEImage(image_data)
-
-                msg_image.add_header(
-                    'content-disposition', 'attachment', filename=f'cryptocurrency_{currency}.png')
-                msg_image.add_header('Content-ID', f'image_cid_{currency}')
-                message.attach(msg_image)
         try:
             email_sender = smtplib.SMTP_SSL(
                 self.conf.email.smtp_server, self.conf.email.smtp_port)
