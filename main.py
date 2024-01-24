@@ -188,6 +188,7 @@ class CoinCheck(threading.Thread):
             self.client.fput_object(
                 self.conf.minio_s3.bucket, f'/public/{filename}', f'/tmp/{filename}',
             )
+            plt.close()
             return f'https://{self.conf.minio_s3.endpoint}/{self.conf.minio_s3.bucket}/public/{filename}'
 
     def generateHtml(self, data):
