@@ -59,7 +59,7 @@ options:
     After=network.target
 
     [Service]
-    ExecStart=/usr/bin/cryptocurrency-notify --config /etc/cryptocurrency-notify/config.json
+    ExecStart=/usr/bin/cryptocurrency-notify --config /etc/cryptocurrency-notify/config.yaml
     Restart=always
 
     [Install]
@@ -67,9 +67,9 @@ options:
     ```
 9. Configuration
 
-    [Example](/example_config.json)
+    [Example](/example.yaml)
 
-    `sudo vim /etc/cryptocurrency-notify/config.json`
+    `sudo vim /etc/cryptocurrency-notify/config.yaml`
 
 10. run in background
 
