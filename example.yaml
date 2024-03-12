@@ -11,6 +11,7 @@ minio_s3:
   access_key: xxxxxxxxxxxxx
   secret_key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+check_interval: 300
 
 coinlist:
   ethereum:
@@ -29,5 +30,7 @@ coinlist:
     max: 0.15269
     min: 0.072512
 
-sendto: example@qq.com
+sendto:
+  - example@qq.com
+  - example@gmail.com
 proxy: http://127.0.0.1:8889

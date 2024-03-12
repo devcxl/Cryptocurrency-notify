@@ -10,7 +10,7 @@ import time
 from decimal import Decimal
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Dict
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import requests
@@ -47,7 +47,8 @@ class Setting(BaseModel):
     email: EmailSetting = Field(description="Email setting")
     minio_s3: MinioS3Setting = Field(description="File Setting")
     coinlist: Dict[str, Coin] = Field(description="关注的代币列表")
-    sendto: str = Field(description='邮件收件人')
+    check_interval: int = Field(description='检查间隔')
+    sendto: List[str] = Field(description='邮件收件人')
     proxy: str = Field(description='请求代理')
 
 
@@ -232,8 +233,7 @@ class CoinCheck(threading.Thread):
                     notifyPrice = self.conf.coinlist.get(currency)
                     if notifyPrice:
                         currentPrice = info['usd']
-                        log.debug(
-                            f'resp:{currency},{notifyPrice},{currentPrice}')
+                        log.debug(f'resp:{currency},{notifyPrice},{currentPrice}')
                         if currentPrice > notifyPrice.max or currentPrice < notifyPrice.min:
                             notification_flag = True
                 if notification_flag:
@@ -241,15 +241,25 @@ class CoinCheck(threading.Thread):
             else:
                 log.error("Request CoinGeko api failed")
 
-            time.sleep(600)
+            time.sleep(self.conf.check_interval)
 
     def notify(self, data):
         '''发送通知邮件'''
-        context = self.template.replace(
-            '<!-- context -->', self.generateHtml(data=data))
+        context = self.template.replace('<!-- context -->', self.generateHtml(data=data))
         message = MIMEMultipart()
         message["From"] = self.conf.email.sender_email
-        message["To"] = self.conf.sendto
+
+        if len(self.conf.sendto) > 1:
+            # 第一个地址为收件人，其余为抄送人
+            recipient = self.conf.sendto[0]
+            cc_addrs = self.conf.sendto[1:]
+            message['To'] = recipient
+            message['Cc'] = ', '.join(cc_addrs)
+        else:
+            # 只有一个地址，不设置抄送
+            recipient = self.conf.sendto[0]
+            message['To'] = recipient
+
         message["Subject"] = "Notify Cryptocurrency Status!!!"
 
         html_part = MIMEText(context, "html")
@@ -257,12 +267,14 @@ class CoinCheck(threading.Thread):
         message.attach(html_part)
 
         try:
-            email_sender = smtplib.SMTP_SSL(
-                self.conf.email.smtp_server, self.conf.email.smtp_port)
-            email_sender.login(
-                self.conf.email.sender_email, self.conf.email.sender_password)
-            email_sender.sendmail(
-                self.conf.email.sender_email, self.conf.sendto, message.as_string())
+            email_sender = smtplib.SMTP_SSL(self.conf.email.smtp_server, self.conf.email.smtp_port)
+            email_sender.login(self.conf.email.sender_email, self.conf.email.sender_password)
+
+            if len(self.conf.sendto) > 1:
+                email_sender.sendmail(self.conf.email.sender_email, [recipient] + cc_addrs, message.as_string())
+            else:
+                email_sender.sendmail(self.conf.email.sender_email, [recipient], message.as_string())
+
             log.info(f"notify: {self.conf.sendto} successful!")
         except smtplib.SMTPException as e:
             log.error("email send failed:", str(e))
